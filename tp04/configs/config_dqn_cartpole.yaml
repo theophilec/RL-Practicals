@@ -1,0 +1,20 @@
+env: CartPole-v1
+seed: 5
+featExtractor: !!python/name:__main__.NothingToDo ''
+freqSave: 1000
+freqTest: 20
+nbTest: 10
+freqVerbose: 10
+fromFile: null
+nbEpisodes: 1000000
+
+buffer_size: 3000
+gamma: 0.99
+batch_size: 32
+lr: 0.05
+eps_0: 0.005
+eta: 0.0
+change_target: 100
+prioritized: False
+
+layers: [24, 24]
