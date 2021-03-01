@@ -1,0 +1,33 @@
+env: Cooperative Navigation
+observation_shapes:
+  - 14
+  - 14
+  - 14
+action_space_low: -1.0
+action_space_high: 1.0
+seed: 10
+freqSave: 1000
+freqTest: 10
+nbTest: 1
+freqVerbose: 200
+fromFile: null
+nbEpisodes: 1000000
+mem_size: 1000
+actor_lr: 0.001
+critic_lr: 0.01
+gamma: 0.95
+learning_minimum: 1000
+hidden_dim:
+  - 128
+  - 128
+sigma:
+  - 0.2
+  - 0.2
+decrease_rate: 0.99
+batch_size: 128
+rho: 0.1
+reward_clip:
+  - -100
+  - 100
+maxLengthTest: 100    # longueur maximale d'un episode en test
+maxLengthTrain: 25    # longueur maximale d'un episode en train

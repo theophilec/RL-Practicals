@@ -1,0 +1,25 @@
+env: LunarLander-v2
+seed: 5
+featExtractor: !!python/name:__main__.NothingToDo ''
+freqSave: 1000
+freqTest: 1000
+nbTest: 100
+freqVerbose: 10
+fromFile: null
+nbEpisodes: 1000000
+expert_path: expert/expert.pkl
+mem_size: 5000
+lr: 0.0003
+gamma: 0.99
+batch_size: 64
+C: 100
+learning_minimum: 1000
+hidden_dim:
+  - 64
+  - 32
+beta: 0.001
+epsilon: 0.2
+reward_clip:
+  - -100
+  - 0
+noise_std: 0.1

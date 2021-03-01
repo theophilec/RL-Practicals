@@ -1,0 +1,26 @@
+env: MountainCarContinuous-v0
+seed: 10
+featExtractor: !!python/name:__main__.NothingToDo ''
+freqSave: 1000
+freqTest: 10
+nbTest: 1
+freqVerbose: 200
+fromFile: null
+nbEpisodes: 1000000
+mem_size: 10000
+actor_lr: 0.001
+critic_lr: 0.001
+gamma: 0.99
+learning_minimum: 1000
+hidden_dim:
+  - 30
+  - 30
+returns: gae
+lambd: 0.84
+sigma:
+  - 1
+decrease_rate: 0.99
+batch_size: 100
+replay: true
+target: true
+rho: 0.1
