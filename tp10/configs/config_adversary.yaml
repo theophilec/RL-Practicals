@@ -1,0 +1,32 @@
+env: simple_adversary
+observation_shapes:
+  - 8
+  - 10
+  - 10
+action_space_low: -1.0
+action_space_high: 1.0
+seed: 5
+freqSave: 100
+freqTest: 100
+nbTest: 1
+freqVerbose: 200
+fromFile: null
+nbEpisodes: 1000000
+mem_size: 1000000
+actor_lr: 0.001
+critic_lr: 0.01
+gamma: 0.95
+optim_freq: 10
+hidden_dim:
+  - 128
+  - 128
+sigma: 0.2
+decrease_rate: 1
+batch_size: 128
+rho: 0.9
+reward_clip:
+  - -100
+  - 100
+maxLengthTest: 100    # longueur maximale d'un episode en test
+maxLengthTrain: 25    # longueur maximale d'un episode en train
+device: "cuda:0"
