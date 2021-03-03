@@ -70,8 +70,10 @@ def make_env(scenario_name, benchmark=False):
     return env, scenario, world
 
 if __name__ == '__main__':
-    config = load_yaml('./configs/config_adversary.yaml')
     # config = load_yaml('./configs/config_cooperative.yaml')
+    # config = load_yaml('./configs/config_adversary.yaml')
+    config = load_yaml('./configs/config_tag.yaml')
+   
     env, scenario, world = make_env(config["env"])
 
     freqTest = config["freqTest"]
@@ -102,19 +104,19 @@ if __name__ == '__main__':
     loadTensorBoard(outdir, 8008)
     agent.writer = logger.writer
 
-    rsum = [0, 0, 0]
-    mean = [0, 0, 0]
+    rsum = [0 for i in range(env.n)]
+    mean = [0 for i in range(env.n)]
     itest = 0
-    r = [0, 0, 0]
+    r = [0 for i in range(env.n)]
     total_r = 0
-    done = [False, False, False]
+    done = [False for i in range(env.n)]
     truncated = False
     verbose = False
     for i in range(episode_count):
 
         if i % freqTest == 0 and i >= freqTest:  ##### Same as train for now
             print("Test time! ")
-            mean = [0, 0, 0]
+            mean = [0 for i in range(env.n)]
             agent.test = True
             verbose = True
 
@@ -148,7 +150,7 @@ if __name__ == '__main__':
             else:
                 stop = j >= maxLengthTrain
 
-            if sum([int(d) for d in done]) == len(done) or (stop):
+            if all(done) or (stop):
                 # Act one last time on the last reward
                 agent.act(o, r, done, truncated)
                 print(str(i) + " rsum=" + str(rsum) + ", " + str(j) + " actions ")
@@ -158,11 +160,11 @@ if __name__ == '__main__':
                     logger.direct_write(f"All/Reward", total_r, i)
                 mean = [mean[k] + rsum[k] for k in range(env.n)]
                 # Complete reset for new episode
-                rsum = [0, 0, 0]
+                rsum = [0 for i in range(env.n)]
                 o = env.reset()
-                r = [0, 0, 0]
+                r = [0 for i in range(env.n)]
                 total_r = 0
-                done = [False, False, False]
+                done = [False for i in range(env.n)]
                 break
 
     env.close()
