@@ -12,17 +12,17 @@ import torch.nn.functional as F
 import sys
 import threading
 
-def loadTensorBoard(outdir):
-    t = threading.Thread(target=launchTensorBoard, args=([outdir]))
+def loadTensorBoard(outdir, port=6006):
+    t = threading.Thread(target=launchTensorBoard, args=([outdir, port]))
     t.start()
 
-def launchTensorBoard(tensorBoardPath):
-    print('tensorboard --logdir=' + tensorBoardPath)
-    ret=os.system('tensorboard --logdir='  + tensorBoardPath)
+def launchTensorBoard(tensorBoardPath, port=6006):
+    print('tensorboard --logdir=' + tensorBoardPath + ' --port=' + str(port))
+    ret=os.system('tensorboard --logdir='  + tensorBoardPath + ' --port=' + str(port))
     if ret!=0:
         syspath = os.path.dirname(sys.executable)
         print(os.path.dirname(sys.executable))
-        ret = os.system(syspath+"/"+'tensorboard --logdir=' + tensorBoardPath)
+        ret = os.system(syspath+"/"+'tensorboard --logdir=' + tensorBoardPath + ' --port=' + str(port))
     return
 
 class Orn_Uhlen:

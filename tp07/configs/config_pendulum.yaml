@@ -1,4 +1,4 @@
-env: MountainCarContinuous-v0
+env: Pendulum-v0
 seed: 10
 featExtractor: !!python/name:__main__.NothingToDo ''
 freqSave: 1000
@@ -6,7 +6,7 @@ freqTest: 10
 nbTest: 1
 freqVerbose: 200
 fromFile: null
-nbEpisodes: 50
+nbEpisodes: 100
 mem_size: 100000
 actor_lr: 0.001
 critic_lr: 0.001
@@ -18,6 +18,7 @@ hidden_dim:
   - 128
 sigma:
   - 1
-decrease_rate: 1
+decrease_rate: 0.999 #pas de decrease juste pour voir
 batch_size: 64
+target: true
 rho: 0.99

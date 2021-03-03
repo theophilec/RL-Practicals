@@ -1,76 +1,20 @@
 import argparse
 import sys
 import matplotlib
-#matplotlib.use("Qt5agg")
 matplotlib.use("TkAgg")
 import gym
-import gridworld
 import torch
-from utils import *
 from torch.utils.tensorboard import SummaryWriter
 
-from dqn import DQNAgent
-from actor_critic import ActorCritic
-from ppo import PPO
 from ddpg import DDPG
-from behavior_clone import BehaviorClone
-from gail import GAILAgent
+from utils import *
 
-#note : lunar landing, commencer avec explo, descendre petit à petit
-#
 
-if __name__ == '__main__':
-    # config = load_yaml('./configs/config_dqn/config_gridworld.yaml')
-    # config = load_yaml('./configs/config_dqn/config_cartpole.yaml')
-    # config = load_yaml('./configs/config_dqn/config_lunar.yaml')
-
-    # config = load_yaml('./configs/config_policygrad/config_cartpole.yaml')
-
-    # config = load_yaml('./configs/config_ppo/config_cartpole.yaml')
-
-    # config = load_yaml('./configs/config_ddpg/config_mountaincar.yaml')
-
-    config = load_yaml('./configs/config_gail/config_lunar.yaml')
-
-    freqTest = config["freqTest"]
-    freqSave = config["freqSave"]
-    nbTest = config["nbTest"]
+def run_experiment(env, agent, seed, logger, episode_count=1e6, freqTest=100, nbTest=1):
+    np.random.seed(seed)
+    torch.manual_seed(seed)
     
-
-    env = gym.make(config["env"])
-    if hasattr(env, 'setPlan'):
-        env.setPlan(config["map"], config["rewards"])
-
-    tstart = str(time.time())
-    tstart = tstart.replace(".", "_")
-
-    env.seed(config["seed"])
-    np.random.seed(config["seed"])
-    torch.manual_seed(config["seed"])
-
-    episode_count = config["nbEpisodes"]
     ob = env.reset()
-    ob_size = ob.shape[0]
-
-    feature_extractor = config["featExtractor"](env)
-
-    # agent = RandomAgent(env,config)
-    # agent = DQNAgent(env, config)
-    # agent = ActorCritic(env, config)
-    # agent = PPO(env, config)
-    # agent = DDPG(env, config)
-    # agent = BehaviorClone(env, config)
-    agent = GAILAgent(env, config)
-    
-    outdir = "./XP/" + config["env"] + "/" + agent.name + "_" + "-" + tstart
-    print("Saving in " + outdir)
-    os.makedirs(outdir, exist_ok=True)
-    save_src(os.path.abspath(outdir))
-    write_yaml(os.path.join(outdir, 'info.yaml'), config)
-    logger = LogMe(SummaryWriter(outdir))
-    loadTensorBoard(outdir)
-    agent.writer = logger.writer
-
     rsum = 0
     mean = 0
     verbose = True
@@ -80,12 +24,8 @@ if __name__ == '__main__':
     truncated = False
     for i in range(episode_count):
         verbose = False
-        # if i % int(config["freqVerbose"]) == 0 and i >= config["freqVerbose"]:
-        #     verbose = True
-        # else:
-        #     verbose = False
 
-        if i % freqTest == 0 and i >= freqTest:  ##### Same as train for now
+        if i % freqTest == 0 and i >= freqTest:
             print("Test time! ")
             mean = 0
             agent.test = True
@@ -96,9 +36,6 @@ if __name__ == '__main__':
             itest += 1
             logger.direct_write("rewardTest", mean / nbTest, itest)
             agent.test = False
-
-        # if i % freqSave == 0:
-        #     agent.save(outdir + "/save_" + str(i))
 
         j = 0
         if verbose:
@@ -119,14 +56,52 @@ if __name__ == '__main__':
                 agent.act(ob, reward, done, truncated)
                 print(str(i) + " rsum=" + str(rsum) + ", " + str(j) + " actions ")
                 logger.direct_write("reward", rsum, i)
-                agent.nbEvents = 0
                 mean += rsum
+                
+                # Reset for new episode
                 rsum = 0
                 ob = env.reset()
-                #complete reset for new episode
                 reward = 0
                 done = False
                 break
 
     env.close()
 
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Runs experiment')
+    parser.add_argument('env', type=str, choices = ["lunar", "mountaincar", "pendulum"],
+                        help='Name of the environment.')
+    parser.add_argument('--agent', type=str, help='Name of RL Agent', choices=["ddpg", "qprop"])
+    parser.add_argument('--avg', default=5, type=int, help='Number of runs to compute the average on.')
+    args = parser.parse_args()
+
+    config = load_yaml(f'configs/config_{args.env}.yaml') 
+    env = gym.make(config["env"])
+    if hasattr(env, 'setPlan'):
+        env.setPlan(config["map"], config["rewards"])
+    agent = DDPG(env, config) if args.agent == "ddpg" else None
+
+    for seed in np.arange(args.avg):
+        tstart = str(time.time())
+        tstart = tstart.replace(".", "_")
+        outdir = "./XP/" + config["env"] + "/" + agent.name + "_seed" + str(seed) + "-" + tstart
+        print("Saving in " + outdir)
+        os.makedirs(outdir, exist_ok=True)
+        save_src(os.path.abspath(outdir))
+        write_yaml(os.path.join(outdir, 'info.yaml'), config)
+        logger = LogMe(SummaryWriter(outdir))
+        loadTensorBoard(outdir, 8008)
+        agent.writer = logger.writer
+
+        run_experiment(
+            env=env,
+            agent=agent,
+            seed=seed,
+            logger=logger,
+            episode_count=config["nbEpisodes"],
+            freqTest=config["freqTest"],
+            nbTest=config["nbTest"]
+        )
+
+    

@@ -11,19 +11,18 @@ from buffer import Memory
 from policies import GreedyPolicy
 
 class DoubleDQNAgent(BaseAgent):
-    def __init__(self, env, opt):
+    def __init__(self, env, opt, writer=None):
         super().__init__(env, opt)
         self.name = "DoubleDQN"
+        self.writer = writer
         self.qfunction = ApproxFunction(
             self.featureExtractor.outSize*2,
             self.action_space.n,
             opt.hidden_dim
         )
 
-        if opt.target:
-            self.targetq = deepcopy(self.qfunction)
-        if opt.replay:
-            self.memory = Memory(mem_size=opt.mem_size, items=5)
+        self.targetq = deepcopy(self.qfunction)
+        self.memory = Memory(mem_size=opt.mem_size, items=5)
 
         self.mse_loss = nn.MSELoss()
         self.optim = Adam(params=self.qfunction.parameters(), lr=opt.lr)
@@ -32,10 +31,12 @@ class DoubleDQNAgent(BaseAgent):
         self.last_ob = None
         self.action = None
         self.t = 0
+        self.optim_t = 0
 
-   
+    def add_writer(self, writer):
+        self.writer = writer 
+
     def learn(self):
-        print("Learning")
         last_ob, actions, rewards, ob, mask = self.memory.sample(self.opt.batch_size)
         action_values = self.targetq(ob).detach()
         argmax_actions= torch.argmax(self.qfunction(ob).detach(), 1)
@@ -50,9 +51,17 @@ class DoubleDQNAgent(BaseAgent):
         self.optim.zero_grad()
         loss.backward()
         self.optim.step()
+        self.optim_t += 1
+
+        self.writer.add_scalar(
+            "Loss", loss.item(), self.optim_t
+            )
+        self.writer.add_scalar(
+            "Norm", torch.norm(self.qfunction.fcinput.weight.data), self.optim_t
+        )
 
     def act(self, ob, reward, done, truncated, goal):
-        ob = torch.cat([self.get_features(ob), self.get_features(goal)], 0)
+        ob = torch.cat([ob, goal], 0)
         action_values = self.qfunction(ob).detach().squeeze()
 
         if self.action is not None:
@@ -67,13 +76,13 @@ class DoubleDQNAgent(BaseAgent):
                 self.learn()
 
         self.last_ob = ob
-        if (self.opt.target) and (self.t % self.opt.C == 0):
+        if self.t % self.opt.C == 0:
             self.targetq = deepcopy(self.qfunction)
 
         if done:
             self.action = None   
         elif self.test:
-            self.action = int(np.argmax(action_values)) #self.env_policy.chose(0, action_values)
+            self.action = int(np.argmax(action_values))
         else:
             self.action = self.env_policy.chose(action_values)
         self.t += 1

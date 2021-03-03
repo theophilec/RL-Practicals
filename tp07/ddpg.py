@@ -28,11 +28,9 @@ class DDPG(BaseAgent):
             torch.tanh
         )
 
-        if opt.target:
-            self.targetcritic = deepcopy(self.critic)
-            self.targetactor = deepcopy(self.actor)
-        if opt.replay:
-            self.memory = Memory(mem_size=opt.mem_size, items=5)
+        self.targetcritic = deepcopy(self.critic)
+        self.targetactor = deepcopy(self.actor)
+        self.memory = Memory(mem_size=opt.mem_size, items=5)
 
         self.huber_loss = nn.SmoothL1Loss()
         self.optim_critic = Adam(params=self.critic.parameters(), lr=opt.critic_lr)
@@ -42,6 +40,7 @@ class DDPG(BaseAgent):
         self.action = None
         self.sigma = torch.diag(torch.tensor(self.opt.sigma, dtype=torch.float))
         self.t = 0
+        self.optim_t = 0
 
     def update_target(self, target, learner):
         with torch.no_grad():
@@ -64,6 +63,10 @@ class DDPG(BaseAgent):
         self.optim_critic.zero_grad()
         loss.backward()
         self.optim_critic.step()
+
+        self.writer.add_scalar(
+            "Critic/Loss", loss.item(), self.optim_t
+            )
         
         actions = self.actor(last_ob) # TODO: directly keep the grad in the sampled actions
         action_values = self.critic(torch.cat([last_ob, actions], 1))
@@ -72,36 +75,49 @@ class DDPG(BaseAgent):
         loss.backward()
         self.optim_actor.step()
 
-        if self.opt.target:
-            self.update_target(self.targetcritic, self.critic)
-            self.update_target(self.targetactor, self.actor)
+        self.update_target(self.targetcritic, self.critic)
+        self.update_target(self.targetactor, self.actor)
+
+        self.writer.add_scalar(
+            "Actor/Loss", loss.item(), self.optim_t
+        )
+
+        self.optim_t += 1
 
     def act(self, ob, reward, done, truncated):
         ob = self.get_features(ob)
         action = self.actor(ob)
+        # Scale to action space
+        action = action * self.action_space.high[0]
+
         if self.test:
-            return action.detach()
+            return action.detach().numpy()
 
         if self.action is not None:
             self.memory.add(
                 (self.last_ob, 
                 self.action[0], 
-                torch.tensor(reward), 
+                torch.tensor(reward, dtype=torch.float32), 
                 ob, 
                 torch.tensor(done and (not truncated)))
             )
-            if self.t > self.opt.learning_minimum:
-                self.learn()
+
+        if self.memory.size > self.opt.batch_size:
+            self.learn()
 
         self.last_ob = ob
+        self.t += 1
 
         if done:
             self.action = None
-        else:
-            self.sigma *= self.opt.decrease_rate
-            dist = Normal(action.squeeze(), self.sigma)
-            self.action = torch.clip(dist.sample(),
-                    float(self.action_space.low),
-                    float(self.action_space.high))
-        self.t += 1
-        return self.action
+            return self.action
+
+        self.sigma *= self.opt.decrease_rate
+        dist = Normal(action.squeeze(), self.sigma)
+        self.action = torch.clip(dist.sample(),
+                float(self.action_space.low[0]),
+                float(self.action_space.high[0]))
+        
+        # Reshape to action space shape
+        action = self.action.numpy().reshape(self.action_space.shape)
+        return action

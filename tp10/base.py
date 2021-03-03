@@ -21,6 +21,7 @@ class BaseAgent(object):
     def get_features(self, ob):
         return torch.tensor(self.featureExtractor.getFeatures(ob), dtype=torch.float32).squeeze()
 
+
 class ApproxFunction(nn.Module):
     def __init__(self, input_size, output_size, hidden_dims, 
                     output_activation=None, hidden_activation=F.relu):

@@ -2,6 +2,7 @@ import copy
 import os
 import time
 import matplotlib
+import pickle
 
 matplotlib.use("TkAgg")
 import gym
@@ -69,8 +70,9 @@ def make_env(scenario_name, benchmark=False):
     return env, scenario, world
 
 if __name__ == '__main__':
-    env, scenario, world = make_env('simple_spread')
-    config = load_yaml('./configs/config_maddpg/config_cooperative.yaml')
+    config = load_yaml('./configs/config_adversary.yaml')
+    # config = load_yaml('./configs/config_cooperative.yaml')
+    env, scenario, world = make_env(config["env"])
 
     freqTest = config["freqTest"]
     freqSave = config["freqSave"]
@@ -87,10 +89,7 @@ if __name__ == '__main__':
     maxLengthTest = config["maxLengthTest"]
     maxLengthTrain = config["maxLengthTrain"] 
 
-    # o_shapes = [obs.flatten().shape[0] for obs in o]
-
-
-    #Init env and agent
+    # Init agent
     o = env.reset()
     agent = MADDPG(env, config)
 
@@ -100,38 +99,44 @@ if __name__ == '__main__':
     save_src(os.path.abspath(outdir))
     write_yaml(os.path.join(outdir, 'info.yaml'), config)
     logger = LogMe(SummaryWriter(outdir))
-    loadTensorBoard(outdir)
+    loadTensorBoard(outdir, 8008)
     agent.writer = logger.writer
 
-
-    rsum = 0
-    mean = 0
+    rsum = [0, 0, 0]
+    mean = [0, 0, 0]
     itest = 0
     r = [0, 0, 0]
+    total_r = 0
     done = [False, False, False]
     truncated = False
-    verbose = True
-    # agent.test = True
+    verbose = False
     for i in range(episode_count):
 
         if i % freqTest == 0 and i >= freqTest:  ##### Same as train for now
             print("Test time! ")
-            mean = 0
+            mean = [0, 0, 0]
             agent.test = True
+            verbose = True
 
         if i % freqTest == nbTest and i > freqTest:
-            print("End of test, mean reward=", mean / nbTest)
-            itest += 1
-            logger.direct_write("rewardTest", mean / nbTest, itest)
-            agent.test = False
-
-
+            mean = [m / nbTest for m in mean]
+            print("End of test, mean reward=", mean)
+            for k in range(env.n):
+                itest += 1
+                logger.direct_write(f"Agent_{k+1}/RewardTest", mean[k], itest)
+                agent.test = False
+                verbose = False
+        
+        if i % freqSave == 0:
+            print("Saving agent")
+            agent.save(f"checkpoints/{config['env']}_{agent.name}.pt")
+        
         j = 0
         while True:
             a = agent.act(o, r, done, truncated)
             o, r, done, info = env.step(a)
-            print(r)
-            rsum += r[0] # Same reward for all agents
+            rsum = [rsum[k] + r[k] for k in range(env.n)]
+            total_r += sum(r)
             truncated = info.get("TimeLimit.truncated", False)
             j += 1
 
@@ -147,12 +152,16 @@ if __name__ == '__main__':
                 # Act one last time on the last reward
                 agent.act(o, r, done, truncated)
                 print(str(i) + " rsum=" + str(rsum) + ", " + str(j) + " actions ")
-                logger.direct_write("reward", rsum, i)
-                mean += rsum
-                rsum = 0
+                if not agent.test:
+                    for k in range(env.n):
+                        logger.direct_write(f"Agent_{k+1}/Reward", rsum[k], i)
+                    logger.direct_write(f"All/Reward", total_r, i)
+                mean = [mean[k] + rsum[k] for k in range(env.n)]
+                # Complete reset for new episode
+                rsum = [0, 0, 0]
                 o = env.reset()
-                #complete reset for new episode
                 r = [0, 0, 0]
+                total_r = 0
                 done = [False, False, False]
                 break
 

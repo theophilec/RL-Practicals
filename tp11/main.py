@@ -9,33 +9,15 @@ import torch
 from utils import *
 from torch.utils.tensorboard import SummaryWriter
 
-from dqn import DQNAgent
-from actor_critic import ActorCritic
-from ppo import PPO
-from ddpg import DDPG
 from behavior_clone import BehaviorClone
 from gail import GAILAgent
 
-#note : lunar landing, commencer avec explo, descendre petit à petit
-#
-
 if __name__ == '__main__':
-    # config = load_yaml('./configs/config_dqn/config_gridworld.yaml')
-    # config = load_yaml('./configs/config_dqn/config_cartpole.yaml')
-    # config = load_yaml('./configs/config_dqn/config_lunar.yaml')
-
-    # config = load_yaml('./configs/config_policygrad/config_cartpole.yaml')
-
-    # config = load_yaml('./configs/config_ppo/config_cartpole.yaml')
-
-    # config = load_yaml('./configs/config_ddpg/config_mountaincar.yaml')
-
-    config = load_yaml('./configs/config_gail/config_lunar.yaml')
+    config = load_yaml('./configs/config_gail_lunar.yaml')
 
     freqTest = config["freqTest"]
     freqSave = config["freqSave"]
-    nbTest = config["nbTest"]
-    
+    nbTest = config["nbTest"]    
 
     env = gym.make(config["env"])
     if hasattr(env, 'setPlan'):
@@ -50,15 +32,7 @@ if __name__ == '__main__':
 
     episode_count = config["nbEpisodes"]
     ob = env.reset()
-    ob_size = ob.shape[0]
 
-    feature_extractor = config["featExtractor"](env)
-
-    # agent = RandomAgent(env,config)
-    # agent = DQNAgent(env, config)
-    # agent = ActorCritic(env, config)
-    # agent = PPO(env, config)
-    # agent = DDPG(env, config)
     # agent = BehaviorClone(env, config)
     agent = GAILAgent(env, config)
     
@@ -80,12 +54,7 @@ if __name__ == '__main__':
     truncated = False
     for i in range(episode_count):
         verbose = False
-        # if i % int(config["freqVerbose"]) == 0 and i >= config["freqVerbose"]:
-        #     verbose = True
-        # else:
-        #     verbose = False
-
-        if i % freqTest == 0 and i >= freqTest:  ##### Same as train for now
+        if i % freqTest == 0 and i >= freqTest:
             print("Test time! ")
             mean = 0
             agent.test = True
@@ -96,9 +65,6 @@ if __name__ == '__main__':
             itest += 1
             logger.direct_write("rewardTest", mean / nbTest, itest)
             agent.test = False
-
-        # if i % freqSave == 0:
-        #     agent.save(outdir + "/save_" + str(i))
 
         j = 0
         if verbose:
@@ -121,9 +87,9 @@ if __name__ == '__main__':
                 logger.direct_write("reward", rsum, i)
                 agent.nbEvents = 0
                 mean += rsum
+                # Complete reset for new episode
                 rsum = 0
                 ob = env.reset()
-                #complete reset for new episode
                 reward = 0
                 done = False
                 break

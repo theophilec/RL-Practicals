@@ -1,8 +1,8 @@
-env: simple_spread
+env: simple_adversary
 observation_shapes:
-  - 14
-  - 14
-  - 14
+  - 8
+  - 10
+  - 10
 action_space_low: -1.0
 action_space_high: 1.0
 seed: 5
